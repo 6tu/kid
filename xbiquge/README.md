@@ -1,4 +1,8 @@
+代码系新手练手的
+
 需要的库phpQuery  ：   https://github.com/punkave/phpQuery/tree/master/phpQuery
+
+源码压缩包在 lib 文件夹中
 
 phpQuery.php 文件位置   lib/phpQuery/phpQuery.php
 
