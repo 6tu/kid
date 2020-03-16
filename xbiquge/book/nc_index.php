@@ -43,3 +43,4 @@ $head .= '    <title>爬小书_爬自笔趣阁</title></head>' . "\r\n";
 $head .= '<body>' . "\r\n";
 
 echo $head . $c;
+
