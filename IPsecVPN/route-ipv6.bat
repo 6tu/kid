@@ -19,7 +19,6 @@ for /f "tokens=1,2 delims= " %%i in ('echo "%var%"') do set ipv6=%%j
 :: 或者是这样也可以，上面可能比较准确
 :: for /f "tokens=16 delims= " %%i in ('echo^|ipconfig^|find "2001"')do set ipv6=%%i
 echo.&echo IPv6:  %ipv6%
-echo.&echo 回车后将添加v6路由 &pause > nul
+echo.&echo 回车后将添加v6路由 &pause>nul &echo.
 route add ::/0 %ipv6%
-
-pause 
+pause>nul 
