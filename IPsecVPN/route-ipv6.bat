@@ -22,4 +22,4 @@ echo.&echo IPv6:  %ipv6%
 echo.&echo 回车后将添加v6路由 &pause > nul
 route add ::/0 %ipv6%
 
-pause
+pause 
