@@ -37,7 +37,12 @@ if(strpos($uf, $t)){
     // $tt = file_get_contents($base_path . $id . 'index.html',NULL, NULL, 128, 54);
     $head_str = file_get_contents($base_path . $id . 'index.html', NULL, NULL, 0, 210);
     preg_match('/<title>(.*?)<\/title>/is', $head_str, $f);
-    echo $head_str . "<h2>" . $f[1] . "</h2> >>>>>> 今天已经更新完毕 <<<<<< <br>\r\n";
+    echo $head_str . "<h2>" . $f[1] . "</h2> >>>>>> 今天已经更新完毕 <<<<<< <br><br>\r\n";
+    echo "如果更新有误，<a href=?dellog=$id_str>删除更新记录</a>再次更新<br><br>\r\n";
+    if(!empty( $_GET['dellog']) and $_GET['dellog'] == $id_str){
+        unlink($ufn);
+        header("Location:" . $_SERVER['PHP_SELF']);
+    }
     exit;
 }
 // if($h > 18) echo " >>>>>> 今天更新的很慢! <<<<<< <br>\r\n";
