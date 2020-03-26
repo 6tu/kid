@@ -1,0 +1,235 @@
+﻿
+0x01 安装
+
+====> CentOS
+
+RPM安装  下载：https://pkgs.org/download/strongswan
+wget http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/s/strongswan-5.7.2-1.el7.x86_64.rpm
+rpm -ivh strongswan-*.rpm
+
+或者是
+
+yum -y install epel-release
+yum -y install openssl-devel strongswan
+查找相关插件 yum search swan
+其它插件无需安装，尤其是strongswan-libipsec ，貌似与高于2.6的内核有冲突，导致无法连接服务器
+libipsec用于创建ipsec0网卡和UDP封装，高版本使用kernel-netlink
+
+====> Ubuntu
+
+apt -y install openssl libssl-dev strongswan libstrongswan
+
+0x02 服务器端
+
+====> ipsec.conf
+
+# EAP(Extensible Authentication Portocol) 可扩展身份认证协议
+# IKE/ESP 密钥交换协议和数据验证加密
+# right 是 remote 服务器端
+# left  是 local 本地端
+
+config setup
+    charondebug="cfg 2"  # log 提议
+    uniqueids=never      # 多个客户连接同一用户
+
+conn %default
+    ike=aes128-sha256-ecp256,aes256-sha384-ecp384,aes128-sha256-modp2048,aes128-sha1-modp2048,aes256-sha384-modp4096,aes256-sha256-modp4096,aes256-sha1-modp4096,aes128-sha256-modp1536,aes128-sha1-modp1536,aes256-sha384-modp2048,aes256-sha256-modp2048,aes256-sha1-modp2048,aes128-sha256-modp1024,aes128-sha1-modp1024,aes256-sha384-modp1536,aes256-sha256-modp1536,aes256-sha1-modp1536,aes256-sha384-modp1024,aes256-sha256-modp1024,aes256-sha1-modp1024!
+    esp=aes128gcm16-ecp256,aes256gcm16-ecp384,aes128-sha256-ecp256,aes256-sha384-ecp384,aes128-sha256-modp2048,aes128-sha1-modp2048,aes256-sha384-modp4096,aes256-sha256-modp4096,aes256-sha1-modp4096,aes128-sha256-modp1536,aes128-sha1-modp1536,aes256-sha384-modp2048,aes256-sha256-modp2048,aes256-sha1-modp2048,aes128-sha256-modp1024,aes128-sha1-modp1024,aes256-sha384-modp1536,aes256-sha256-modp1536,aes256-sha1-modp1536,aes256-sha384-modp1024,aes256-sha256-modp1024,aes256-sha1-modp1024,aes128gcm16,aes256gcm16,aes128-sha256,aes128-sha1,aes256-sha384,aes256-sha256,aes256-sha1!
+    keyingtries=1
+
+conn myvpn
+    keyexchange=ikev2
+    # ike=aes256-aes192-aes128-sha384-sha256-sha1-modp3072-modp2048-modp1536-modp1024!
+    # esp=aes256-aes192-aes128-sha384-sha256-sha1!
+    rekey=no
+    compress=no
+
+    left=%any
+    # leftid=%domain.ltd
+    # leftfirewall=no
+    leftupdown=/etc/strongswan/strongswan.d/proxyndp.updown
+    leftsubnet=0.0.0.0/0,::/0
+    leftauth=pubkey
+    leftsendcert=always
+    leftcert=server.cert.pem
+
+    right=%any
+    # rightid=%hostname
+    rightsourceip=10.10.2.1/24,2001:db8::/96
+    rightdns=8.8.8.8,8.8.4.4,2001:4860:4860::8888,2001:4860:4860::8844
+    rightsendcert=never
+    rightauth=eap-mschapv2
+
+    # tfc=%mtu
+    eap_identity=%any
+    dpdaction=clear
+    dpddelay=2400s
+    fragmentation=yes
+    auto=add
+
+====> ipsec.secrets
+
+# 取决于ipsec.conf 中的 leftauth的这两行之一
+: RSA <private_key.file> "私约加密密码" 
+<username> : EAP "password" 
+
+====> 防火墙和路由转发
+
+iptables -t nat -A POSTROUTING -s {IPv4}/24 -o eth0 -j MASQUERADE
+ip6tables -t nat -A POSTROUTING -s {IPv6}/112 -o eth0 -j MASQUERADE
+
+在 /etc/sysctl.conf 中追加如下三行
+
+net.ipv4.ip_forward=1
+net.ipv6.conf.all.forwarding=1
+net.ipv6.conf.all.proxy_ndp=1
+
+执行 sysctl -p
+
+====> 启动/停止
+
+ipsec/strongswan restart
+
+
+0x03 客户端
+
+====> ipsec.conf
+
+# ipsec.conf - strongSwan IPsec configuration file
+# basic configuration
+
+config setup
+    # strictcrlpolicy=yes
+    uniqueids = never
+
+# Add connections here.
+conn client
+    keyexchange=ikev2
+    # ike=aes256-sha256-modp2048,3des-sha1-modp2048,aes256-sha1-modp2048!
+    # esp=aes256-sha256,3des-sha1,aes256-sha1!
+    right=pub.6tu.me
+    rightid=%pub.6tu.me
+    rightsubnet=0.0.0.0/0,::/0
+    rightauth=pubkey
+
+    leftsourceip=%config,%config6
+    # leftauth=eap-mschapv2
+    leftauth=eap
+    eap_identity=user
+    type=tunnel
+    auto=add
+
+#配置LAN访问不走IPsec通道
+conn exempt
+    right=127.0.0.1
+    leftsubnet=192.168.0.0/24
+    rightsubnet=192.168.0.0/24
+    type=passthrough
+    auto=route
+
+====> ipsec.secrets
+
+# 取决于ipsec.conf 中的 leftauth的这两行之一
+: RSA <private_key.file> "私约加密密码" 
+<username> : EAP "password" 
+
+====> 防火墙和路由转发
+
+用 ip -6 route 或者  ip route 查看当前路由
+ip route 或者 ip route show table 220命令来查看
+
+ip rule add from {IPv4}/24 table main prio 1
+ip -6 rule add from {IPv6}/64 table main prio 1
+
+====> 启动/停止
+
+# systemctl restart network
+ipsec/strongswan restart
+ipsec/strongswan up/down ccc
+
+0x04 其它事项
+
+====> 证书认证(非必须)
+
+yum/apt -y install ca-certificates
+
+cp ca.pem /etc/pki/ca-trust/source/anchors/
+cp ca.pem /etc/pki/tls/certs/
+
+update-ca-trust extract
+
+====> 参考资料
+
+https://oogami.name/1467/
+https://wiki.strongswan.org/projects/strongswan/wiki/IKEv2ClientConfig
+https://libreswan.org/wiki/Subnet_to_subnet_VPN
+https://wiki.strongswan.org/projects/strongswan/wiki/VirtualIp
+Linux开源VPN之strongSwan
+https://www.jianshu.com/p/ce6c545efd8a
+https://www.cnblogs.com/Su-per-man/p/9952292.html
+https://blog.csdn.net/puppylpg/article/details/64918562
+
+0x05 注意事项
+
+====> 配置选项
+
+# leftauth=pubkey or eap,  取决于所选的网关配置
+# leftcert=certificate,    仅当 leftauth=pubkey (e.g. peerCert.der)
+# eap_identity=username,   仅当 leftauth=eap (e.g. peer)
+# leftprotoport = 17/1701  需要注释掉
+# rightprotoport = 17/%any 需要注释掉
+type=passthrough
+type=transport
+auto=route
+
+keyingtries=%forever
+dpdaction=restart
+closeaction=restart
+====> 错误调试
+
+启动后抛出如下错误，一般是内核不支持 IKE,隧道。尝试 modprobe af_key
+
+no netkey IPsec stack detected
+no KLIPS IPsec stack detected
+no known IPsec stack detected, ignoring!
+
+0x06 各个功能模块说明
+
+charon :貌似管理 IKE(Internet Key Exchange) 守护进程
+
+strongSwan IPsec client
+charon-cmd charon-systemd
+
+strongSwan IPsec client, pki 制作数字证书命令工具, SCEP(简单证书注册协议) client
+strongswan-pki strongswan-scepclient
+
+strongSwan IPsec client, swanctl command
+strongswan-swanctl
+
+IPsec VPN 主程序
+strongswan
+
+strongSwan 守护启动器和配置文件解析器
+strongswan-starter
+
+IKE（Internet Key Exchange） 守护进程
+strongswan-charon strongswan-libcharon
+
+strongSwan charon library
+libcharon-standard-plugins libcharon-extra-plugins
+
+strongSwan 实用和加密库
+libstrongswan libstrongswan-standard-plugins libstrongswan-extra-plugins
+
+网络管理框架插件 / 可与NetworkManager进行交互的插件
+network-manager-strongswan strongswan-nm
+
+TNC(Trusted Network Connect's ) 可信网络连接协议
+IF-MAP(Interface for Metadata Access Point)
+PDP(Packet Data Protoco)
+
+base / client / server files
+strongswan-tnc-base strongswan-tnc-client strongswan-tnc-server
+
+TNC 的插件
+strongswan-tnc-ifmap strongswan-tnc-pdp

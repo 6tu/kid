@@ -1,0 +1,35 @@
+Zetatier One 基本用法
+
+ZeroTier One是用加密的点对点技术将处于不同物理位置的网络建立私人的局域网，即使用软件实现路由和交换机功能，
+而且它能使用WEB控制台管理网络，是对SDN(Software Defined Network)软件定义网络的完美实现。
+
+1.  在官方zerotier.com注册账号，然后Network --> Create a Network ，
+    记住Network's ID，就是哪个16位的字符串，这个很重要，客户机要这个ID才能登入服务器
+
+2.  上面就算是服务器，下面安装客户端，执行完毕收到200 join OK后在zerotier.com上认证(Auth)一下就OK了
+    curl -s https://install.zerotier.com | sudo bash
+    zerotier-cli join "Network's ID"
+   
+3.  凡是加入这个"Network's ID"的机器包括可穿戴的，就在同一个局域网中。
+
+4.  在客机执行 ip addr sh zt+xyz | grep 'inet' ，会看到zerotier分配过来的内网地址，
+    不管这个地址是IPv4还是IPv6，长什么样的，都是内网地址，不用怀疑，绝对不会是公网地址
+
+5.  ZeroTier组建了局域网，进一步设置则能接入互联网。
+    这里选定一台有公网的Linux客户端(10.200.0.123)作为接入互联网的服务器，
+    开启它的路由转发 和 松散的反向路径校验
+	echo 1 > /proc/sys/net/ipv4/ip_forward
+    echo 2 >/proc/sys/net/ipv4/conf/all/rp_filter
+    设置iptables 转发数据
+	iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+    iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+    iptables -A FORWARD -i zt+xyz -o eth0 -j ACCEPT
+
+6.  这样设置后，相当于在路由器后面ZeroTier局域网接入了互联网。
+    接下来只需要在ZeroTier.com中放行即可
+    Add Routes    Destination 0.0.0.0/0 (Via) 10.200.0.123 (ZeroTier分配给Linux客户端的IP)
+
+    同时需要在接入互联网的客户端放行 Global 权限，即执行下面的一条命令
+    zerotier-cli set 8bd5124fd6171f26 allowDefault=1
+
+
