@@ -1,18 +1,69 @@
 <?php
 $str = file_get_contents('20290282.html');
-$dom = new DOMDocument();
-$dom -> loadHTML($str);
-$chap = $dom -> getElementsByTagName('h1') -> item(0); # HTML标签
-$content = $dom -> getElementById('content'); # HTML标签中的id属性
-$bottem2 = getElementsByClassName($dom, $ClassName = 'bottem2', $tagName = null); # 返回数组，$bottem2[0]为对象
-$dom -> appendChild($chap); # appendChild() [追加]参数为对象
-$dom -> appendChild($content);
-$dom -> appendChild($bottem2[0]);
-$html = $dom -> saveHTML();
-$html_array = explode('</html>', $html);
-$html = trim($html_array[1]);
-echo $html . "\r\n<br><br><br>\r\n";
+$str = file_get_contents('index.txt');
+$str = mb_convert_encoding($str, "GBK", "UTF-8");
 
+# 标签 tag
+$element = 'p';
+$element_type = 'tag';
+
+# DIV标签中的 id
+// $element = 'content';
+// $element_type = 'id';
+ 
+# DIV标签中的 class
+// $element = 'bottem2';
+// $element_type = 'class';
+
+$html = dom_import_html($str, $element, $element_type);
+// $html = mb_convert_encoding($html, "UTF-8", "GBK");
+echo $html;
+
+# DOMDocument 针对UTF-8处理
+# $element_type 只能是 tag 、 id 和 class
+function dom_import_html($str, $element, $element_type){
+    $dom = new DOMDocument("1.0","UTF-8");
+
+    $dom->formatOutput=false;
+    $dom->preserveWhiteSpace=true;
+    
+    $dom->validateOnParse=false;
+    $dom->standalone=true;
+    $dom->strictErrorChecking=false;
+    $dom->recover=true;
+
+    $dom -> loadHTML($str);
+    $tr = $dom->createElement('br');
+
+    # HTML标签
+    # appendChild() [追加]参数为对象，且只能是一个(Object(DOMNodeList)
+    // $object = $dom -> getElementsByTagName($element) -> item(2); # 指定第2个标签
+    if(strtolower($element_type) == 'tag'){
+        $object = $dom -> getElementsByTagName($element);
+        foreach ($object as $node) {
+            // $dom -> appendChild($tr);
+            $dom -> appendChild($node);
+        }
+    }
+    if(strtolower($element_type) == 'id'){
+        $object = $dom -> getElementById($element);
+        $dom -> appendChild($object);
+    }
+    if(strtolower($element_type) == 'class'){
+        $class = getElementsByClassName($dom, $ClassName = $element, $tagName = null);
+        $object = $class[0];
+        $object = $dom -> getElementById($element);
+        $dom -> appendChild($object);
+    }
+    // echo @$object->length;
+    $html = $dom -> saveHTML();
+    $html_array = explode('</html>', $html);
+    $html = trim($html_array[1]);
+    // echo $html . "\r\n<br><br><br>\r\n";
+    return $html;
+}
+
+# 返回数组，$Matched[0]为对象
 function getElementsByClassName($dom, $ClassName, $tagName = null){
     if($tagName) $Elements = $dom -> getElementsByTagName($tagName);
     else $Elements = $dom -> getElementsByTagName("*");
