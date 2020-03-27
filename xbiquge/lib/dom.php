@@ -60,6 +60,9 @@ function dom_import_html($str, $element, $element_type){
     $html_array = explode('</html>', $html);
     $html = trim($html_array[1]);
     // echo $html . "\r\n<br><br><br>\r\n";
+    // flush(); # 刷新缓存（直接发送到浏览器)
+    ob_start();
+    ob_end_flush(); # 关闭缓存
     return $html;
 }
 
