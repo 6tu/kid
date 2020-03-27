@@ -82,7 +82,7 @@ function getElementsByClassName($dom, $ClassName, $tagName = null){
 }
 
 function innerHTML($element){
-    $dom = newDOMDocument();
+    $dom = new DOMDocument();
     # 在新建的DOMDocument追加对象时会自动HTML-ENTITIES
     $dom -> substituteEntities = false;
     # importNode()导入到别的DOM档案，当前档案无需导入
