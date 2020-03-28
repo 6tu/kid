@@ -5,7 +5,7 @@ $t = date('Y-m-d', time());
 
 $id_array = array('51687', '51367');
 $base_path = $_SERVER['DOCUMENT_ROOT'] . '/book/';
-$url = 'https://pub.6tu.me/caiji/';
+$url = 'http://ali.6tu.me/book/';
 $refer = $url . $_SERVER['PHP_SELF'];
 $option = array(
                'http' => array('header' => "Referer:$refer"),
@@ -18,8 +18,7 @@ foreach($id_array as $k => $id){
     if(!file_exists($base_path . $fn)) file_put_contents($base_path . $fn, '');
     $uf = file_get_contents($base_path . $fn);
     if(strpos($uf, $t) == false){
-        if($k == 0) file_get_contents($url . 'suyun.php', false, stream_context_create($option));
-        if($k == 1) file_get_contents($url . 'yuefeng.php', false, stream_context_create($option));
+        file_get_contents($url . 'xbiquge_v0.2.php', false, stream_context_create($option));
     }
     $id = $id . '/';
     $str = file_get_contents($base_path . $id . 'index.html', NULL, NULL, 0, 1024);
@@ -38,6 +37,7 @@ foreach($id_array as $k => $id){
     $c = $c . "</dl>\r\n" . $update ;
     if(!empty( $_GET['dellog']) and $_GET['dellog'] == $id_str){
     unlink($fn);
+    file_get_contents($url . 'xbiquge_v0.2.php', false, stream_context_create($option));
     header("Location:" . $_SERVER['PHP_SELF']);
     }
 }
