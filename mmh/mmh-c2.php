@@ -27,18 +27,23 @@ if(empty($ext['openssl'])) die("不支持 openssl <br>\r\n");
 if(empty($ext['zip']))     die("不支持 zip <br>\r\n");
 
 # 用浏览器访问
+if(empty($_SERVER['HTTP_USER_AGENT'])) $_SERVER['HTTP_USER_AGENT'] = 'Wget';
 if(empty($_GET['mhdaily']) and !strstr($_SERVER['HTTP_USER_AGENT'], 'Wget')) die(form_html());
 
 $mhdata = 'mhdata/';
 $cwd = getcwd();
 if(!is_dir($cwd.'/'.$mhdata)) mkdir($cwd.'/'.$mhdata, 0777, true);
 
+# 自定义 $host, 可为数组, 提交选择
 $host = 'http://jianji.me/mmh/' . $mhdata;
+
+
+
+
 ob_end_clean();
-//ob_implicit_flush(1);
+
 echo "正在下载 <br><br>\r\n";
 flush();
-ob_flush();
 # 由GET变量传递的文件名和URL
 if(isset($_GET['mhdaily'])){
     $fn = $_GET['mhdaily'];
@@ -64,11 +69,17 @@ $url_src = $host . $fn_src;
 $fn_zip = $date.'.zip';
 $fn_p7m = $fn_zip . '.p7m';
 
+$time = time();
+if(file_exists($mhdata . $fn_src)){
+    $fn_src_time = filemtime($mhdata . $fn_src);
+    $time_diff = round(($time - $fn_src_time)/60, 1);
+    if(($time_diff) < 31) die("<br><b>半小时前更新 </b><br>\r\n");
+}
+
 $html = get_html($url_src);
 file_put_contents($mhdata . $fn_src, $html);
 echo "\r\n</pre><br>下载完毕 <br><br>\r\n";
 flush();
-ob_flush();
 echo unzip_file($mhdata . $fn_src, $mhdata);
 echo pkcs7_decrypt($mhdata . $fn_p7m, $mhdata . $fn_zip);
 echo unzip_file($mhdata . $fn_zip, './');
@@ -238,11 +249,11 @@ function stream_notification_callback($notification_code, $severity, $message, $
                 $length_f = number_format(($bytes_transferred/$filesize) * 100, 2);
                 $length = (int)$length_f;
                 $rem = substr($length_f, -2);
-                if($length < 2){
+                if($length < 9){
                     echo '.';
                     break;
                 }
-                if($length > 2 and $length < 10) break;
+                if($length > 9 and $length < 10) break;
                 if($rem > 94 and is_int($length/10)){
                     //printf("\r\n<br>[%-90s] %d%% (%2d/%2d kb)", str_repeat("=", $length) . ">", $length, ($bytes_transferred/1024), $filesize/1024);
                     printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
