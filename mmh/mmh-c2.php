@@ -42,7 +42,7 @@ $host = 'http://jianji.me/mmh/' . $mhdata;
 
 ob_end_clean();
 
-echo "正在下载 <br><br>\r\n";
+echo "\r\n正在下载 <br><br>\r\n";
 flush();
 # 由GET变量传递的文件名和URL
 if(isset($_GET['mhdaily'])){
