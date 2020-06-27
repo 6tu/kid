@@ -19,6 +19,7 @@ ignore_user_abort();
 set_time_limit(0);
 error_reporting(1);
 date_default_timezone_set('America/New_York');
+ob_implicit_flush(true);
 
 $ext = array_flip(get_loaded_extensions());
 if(empty($ext['curl']))    die("不支持 curl <br>\r\n");
@@ -65,13 +66,13 @@ $fn_p7m = $fn_zip . '.p7m';
 
 $html = get_html($url_src);
 file_put_contents($mhdata . $fn_src, $html);
-echo "下载完毕 <br>\r\n";
+echo "\r\n</pre><br>下载完毕 <br><br>\r\n";
 flush();
 ob_flush();
 echo unzip_file($mhdata . $fn_src, $mhdata);
 echo pkcs7_decrypt($mhdata . $fn_p7m, $mhdata . $fn_zip);
 echo unzip_file($mhdata . $fn_zip, './');
-echo "<a href=/mmh> $date </a>";
+echo "\r\n<br><a href=/mmh><b> $date </b></a>";
 unlink($mhdata . $fn_p7m);
 unlink($mhdata . $fn_src);
 
@@ -108,6 +109,7 @@ function get_html($url){
                 'ssl' => array('verify_peer' => false, 'verify_peer_name' => false,),
                     );
     $context = stream_context_create($option);
+    stream_context_set_params($context, array("notification" => "stream_notification_callback"));
 
     $html = @file_get_contents($url, false, $context);
     if($html === false) die('Failed ' . $http_response_header[0]);
@@ -218,3 +220,41 @@ No00f8AsulitJezWuObMZniFI2/OnlgcfJ73fexZqM51ucTaY+p5Eu0X0/PpTIlk
     }else die("文件解密失败! <br>\r\n");
 }
 
+function stream_notification_callback($notification_code, $severity, $message, $message_code, $bytes_transferred, $bytes_max){
+    static $filesize = null;
+    switch($notification_code){
+    case STREAM_NOTIFY_FILE_SIZE_IS:
+        $filesize = $bytes_max;
+        break;
+    case STREAM_NOTIFY_CONNECT:
+        echo "Connected ...<br><pre>\r\n";
+        break;
+    case STREAM_NOTIFY_PROGRESS:
+        if($bytes_transferred > 0 && $filesize >= 8192){
+            $bytes_transferred += 8192;
+            if(!isset($filesize)){
+                printf("\r\nUnknown filesize.. %2d kb done..", $bytes_transferred/1024/1024);
+            }else{
+                $length_f = number_format(($bytes_transferred/$filesize) * 100, 2);
+                $length = (int)$length_f;
+                $rem = substr($length_f, -2);
+                if($length < 2){
+                    echo '.';
+                    break;
+                }
+                if($length > 2 and $length < 10) break;
+                if($rem > 94 and is_int($length/10)){
+                    //printf("\r\n<br>[%-90s] %d%% (%2d/%2d kb)", str_repeat("=", $length) . ">", $length, ($bytes_transferred/1024), $filesize/1024);
+                    printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
+                }
+                if($length_f > 99.98 and $length == 100){
+                    printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
+                }
+            }
+        }
+        break;
+    case STREAM_NOTIFY_COMPLETED:
+        echo "</pre><br>\r\n";
+        break;
+    }
+}
