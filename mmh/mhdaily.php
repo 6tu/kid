@@ -74,7 +74,7 @@ $time = time();
 if(file_exists($mhdata . $fn_src_info)){
     $src_info_time = filemtime($mhdata . $fn_src_info);
     $time_diff = round(($time - $src_info_time)/60, 1);
-    if(($time_diff) < 61){
+    if(($time_diff) < 31){
         die("<br><b>".$time_diff. "</b> 分钟前更新 " .$url_out. "<br>\r\n");
     }
     $old_src_info = file_get_contents($mhdata . $fn_src_info);
@@ -117,9 +117,11 @@ if(!empty($src_headers['Last-Modified'])){
 }else $modified = '';
 
 if($modified === $old_modified){
+    touch($mhdata . $fn_out);
+    touch($mhdata . $fn_src_info);
     die("<br>文件已是最新 " . $url_out . "<br>\r\n");
 }
-if(file_exists($mhdata . $fn_out) and ($time - filemtime($mhdata . $fn_out)) < 3600){
+if(file_exists($mhdata . $fn_out) and ($time - filemtime($mhdata . $fn_out)) < 1800){
     die('<br>1小时内的更新文件 ' . $url_out . "<br>\r\n");
 }
 
@@ -130,6 +132,10 @@ $file = make_path($url);
 $array_res = getResponse($url, $data = [], $cookie_file = '', $progress=true);
 $html = $array_res['body'];
 file_put_contents($file, $html);
+$header_all = $array_res['header'];
+$array_header = headers_string2array($header_all);
+$modi_ts = header_last_modified($array_header);
+touch($file, $modi_ts);
 $array_url_one = array_unique(preg_htmllink($html));
 
 $array_url_two = array();
@@ -144,6 +150,10 @@ foreach($array_url_one as $url_1){
     $array_res = getResponse($url_1, $data = [], $cookie_file = '', $progress=true);
     $html = $array_res['body'];
     file_put_contents($file, $html);
+    $header_all = $array_res['header'];
+    $array_header = headers_string2array($header_all);
+    $modi_ts = header_last_modified($array_header);
+    touch($file, $modi_ts);
 ++$i;
 echo '.';
 flush();
@@ -172,6 +182,10 @@ foreach($array_url_two as $url_2){
     $array_res = getResponse($url_2, $data = [], $cookie_file = '', $progress=true);
     $html = $array_res['body'];
     file_put_contents($file, $html);
+    $header_all = $array_res['header'];
+    $array_header = headers_string2array($header_all);
+    $modi_ts = header_last_modified($array_header);
+    touch($file, $modi_ts);
 ++$ii;
 echo '.';
 flush();
@@ -186,8 +200,8 @@ $src_md5 = md5_file($file_src);
 // echo $file_src .' '. $src_md5;
 $filename = '[File-Name] => '. $fn_src;
 $modified = '[Last-Modified] => '. $modified;
-$length = '[Content-Length] => '. $length;
-$filemd5 = '[File-MD5] => '. $src_md5;
+$length   = '[Content-Length] => '. $length;
+$filemd5  = '[File-MD5] => '. $src_md5;
 $src_info = "Array\n(\n" . $filename ."\n". $modified ."\n". $length ."\n" . $filemd5 ."\n" . ")\n";
 file_put_contents($mhdata . $fn_src_info, $src_info);
 
@@ -373,7 +387,7 @@ function getResponse($url, $data = [], $cookie_file = '', $progress=true){
     else $agent = 'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.67 Safari/537.36';
     // $agent = 'Wget/1.18 (mingw32)'; # 'Wget/1.17.1 (linux-gnu)';
     // echo "<pre>\r\n" . $agent . "\r\n" . $refer . "\r\n" . $lang . "\r\n\r\n";
-	
+
     if(empty($cookie_file)){
         $cookie_file = '.cookie';
     }
@@ -402,8 +416,8 @@ function getResponse($url, $data = [], $cookie_file = '', $progress=true){
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     $result = curl_exec($ch);
     curl_close($ch);
-	
-	# try{}catch{}语句
+
+    # try{}catch{}语句
     // try{
     //     $handles = curl_exec($ch);
     //     curl_close($ch);
@@ -461,6 +475,7 @@ function getResponse($url, $data = [], $cookie_file = '', $progress=true){
         $charset = trim($charset_array[0]);
         //$charset = str_replace(';', '', $charset);
     }
+    if(empty($mime_type)) $mime_type = '';
     if(strstr($mime_type, 'text/html') and $charset !== 'utf-8'){
         $body = mb_convert_encoding ($body, 'utf-8', $charset);
     }
@@ -504,6 +519,44 @@ function progress($resource, $dl_size, $dl, $up_size, $up){
     ob_flush();
     flush();
     //sleep(1);
+}
+
+function headers_string2array($res_header){
+    $headers = array();
+    $res_header = trim($res_header);
+    if(strpos($res_header, "\r\n\r\n")){
+        // $header_text = substr($res_header, 0, strpos($res_header, "\r\n\r\n"));
+        $header_text = substr($res_header, strpos($res_header, "\r\n\r\n"));
+    }else{
+        $header_text = $res_header;
+    }
+    $header_text = trim($header_text);
+
+    foreach(explode("\r\n", $header_text) as $i => $line){
+        if($i !== 0 and !strpos($line, ":")) continue;
+        if($i === 0) $headers['http_code'] = $line;
+        else{
+            list($key, $value) = explode(':', $line, 2);
+            $headers[$key] = $value;
+        }
+    }
+    return $headers;
+}
+
+function header_last_modified($array_header){
+    if(!empty($array_header['Last-Modified'])){
+        $modified = trim($array_header['Last-Modified']);
+        $fmt = 'D, d M Y H:i:s O+';
+        $datetime = DateTime::createFromFormat($fmt, $modified);
+        $modi_ts = $datetime -> getTimestamp();
+        $modi_td = $datetime -> format('Y-m-d H:i:s');
+    }else{
+        $modified = '';
+        $modi_ts = time();
+        $modi_td = time();
+    }
+    // echo $modified;
+    return $modi_ts;
 }
 
 function randkey($len){
