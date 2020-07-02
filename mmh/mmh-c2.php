@@ -15,6 +15,11 @@
  * 
  */
 
+$mhdata = 'mhdata/';
+# 自定义 $host, 可为数组, 提交选择
+$host = 'http://jianji.me/mmh/' . $mhdata;
+// $host = 'http://qncdn.popcn.net/';
+
 ignore_user_abort();
 set_time_limit(0);
 error_reporting(1);
@@ -30,13 +35,8 @@ if(empty($ext['zip']))     die("不支持 zip <br>\r\n");
 if(empty($_SERVER['HTTP_USER_AGENT'])) $_SERVER['HTTP_USER_AGENT'] = 'Wget';
 if(empty($_GET['mhdaily']) and !strstr($_SERVER['HTTP_USER_AGENT'], 'Wget')) die(form_html());
 
-$mhdata = 'mhdata/';
 $cwd = getcwd();
 if(!is_dir($cwd.'/'.$mhdata)) mkdir($cwd.'/'.$mhdata, 0777, true);
-
-# 自定义 $host, 可为数组, 提交选择
-$host = 'http://jianji.me/mmh/' . $mhdata;
-$host = 'http://qncdn.popcn.net/';
 
 ob_end_clean();
 
@@ -89,8 +89,11 @@ unlink($mhdata . $fn_src);
 
 
 /** =========函数区========= */
-
+$runtimes = 0;
 function stream_notification_callback($notification_code, $severity, $message, $message_code, $bytes_transferred, $bytes_max){
+
+    global $runtimes;
+    define("TIME", time());
     static $filesize = null;
     switch($notification_code){
     case STREAM_NOTIFY_FILE_SIZE_IS:
@@ -99,6 +102,7 @@ function stream_notification_callback($notification_code, $severity, $message, $
     case STREAM_NOTIFY_CONNECT:
         # 发生301等则出现两次
         // echo "Connected ...<br><pre>\r\n";
+        echo '<pre>[';
         break;
     case STREAM_NOTIFY_PROGRESS:
         if($bytes_transferred > 0 && $filesize >= 8192){
@@ -109,22 +113,19 @@ function stream_notification_callback($notification_code, $severity, $message, $
                 $length_f = number_format(($bytes_transferred/$filesize) * 100, 2);
                 $length = (int)$length_f;
                 $rem = substr($length_f, -2);
-                if($length < 6){
-                    echo '.';
-                    break;
-                }
-                if($rem > 94 and is_int($length/10)){
-                    //printf("\r\n<br>[%-90s] %d%% (%2d/%2d kb)", str_repeat("=", $length) . ">", $length, ($bytes_transferred/1024), $filesize/1024);
-                    printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
-                }
-                if($length_f > 99.98 and $length == 100){
-                    printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
+                $runtimes++;
+                if($length_f > 99.98) echo "=";
+                else{
+                    if(is_int($runtimes/10)) echo ".";
+                    if(is_int($runtimes/1000)) echo ">] $length_f\r\n[";
                 }
             }
         }
         break;
     case STREAM_NOTIFY_COMPLETED:
-        echo "</pre><br>\r\n";
+        $st = time() - TIME;
+        $filesize = $filesize/1024/1024 . "M";
+        echo "</pre>下载完毕,耗时 $st 秒,文件 $filesize <br>\r\n";
         break;
     }
 }

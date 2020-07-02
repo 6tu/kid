@@ -496,28 +496,34 @@ function getResponse($url, $data = [], $cookie_file = '', $progress=true){
     return $res_array;
 }
 
+$runtimes = 0; # 必须的,用于记录运行次数
 function progress($resource, $dl_size, $dl, $up_size, $up){
-    # 最好是开启session，让其记忆次数 
+    # 最好是开启session，让其记忆次数
+    # 用 $runtimes 代替了 $i
+    global $runtimes;
+    $runtimes++;
+
     if(!defined('tmp_log')){
         @define("tmp_log", randkey($len=8) . '.log');
     }
     $tmp = tmp_log;
 
     if($dl_size > 0){
-        if(!file_exists($tmp)){
-            $i = 0;
-            file_put_contents($tmp, 1);
-        }else{
-            $i = file_get_contents($tmp);
-            $i = intval($i) + 1;
-            file_put_contents($tmp, $i);
-        }
+        // if(!file_exists($tmp)){
+        //     $i = 0;
+        //     file_put_contents($tmp, 1);
+        // }else{
+        //     $i = file_get_contents($tmp);
+        //     $i = intval($i) + 1;
+        //     file_put_contents($tmp, $i);
+        // }
         $decimal = $dl / $dl_size * 100;
         $decimal = round($decimal, 2);
         $per = $decimal . "%";
         echo '.';
-        if(is_int($i/100) and ($i/100) > 0) echo " $per <br>\r\n";
-        if($decimal == 100) unlink($tmp);
+        # 在千兆网络中,对10M的文件该条件几乎不成立
+        if(is_int($runtimes/100) and ($runtimes/100) > 0) echo " $per <br>\r\n";
+        // if($decimal == 100) unlink($tmp);
     }
     ob_flush();
     flush();
