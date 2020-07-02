@@ -10,6 +10,7 @@
  * 数组以 $array_ 开头, 文件名以 $fn_ 开头, 网址以 $url_ 开头,
  * 不带文件名的路径以 $path_ 开头,带文件名的路径以 $file_ 开头,
  * 
+ * 文件修改日期遵循 GMT时间
  * 
  */
 
@@ -30,7 +31,7 @@ if(empty($ext['zip']))     die("不支持 zip <br>\r\n");
 if(empty($_GET['mhdaily']) and !strstr($_SERVER['HTTP_USER_AGENT'], 'Wget')) die(form_html());
 
 # 上传到七牛对象存储
-$up2qiniu = false; # true为发送,false为不发送
+$up2qiniu = true; # true为发送,false为不发送
 
 $host = base64_decode('aHR0cDovL20ubWluZ2h1aS5vcmc=');
 $url_base = $host . '/mh/articles/';
@@ -127,7 +128,8 @@ if(file_exists($mhdata . $fn_out) and ($time - filemtime($mhdata . $fn_out)) < 1
 
 echo "\r\n</pre><br>正在离线下载 <br><pre>\r\n";
 
-$url = $host . '/mmh/articles/' .$path_date. 'index.html';
+$file_index = '/mmh/articles/' .$path_date. 'index.html';
+$url = $host . $file_index;
 $file = make_path($url);
 $array_res = getResponse($url, $data = [], $cookie_file = '', $progress=true);
 $html = $array_res['body'];
@@ -214,6 +216,7 @@ if(file_exists($fn_zip)) unlink($fn_zip);
 
 $array_url_all = array_unique(array_merge($array_url_two, $array_url_one));
 $array_url_all[] .= '/pub/mobile.css';
+$array_url_all[] .= $file_index;
 // file_put_contents('url.log', print_r($array_url_all, true));
 // print_r($array_url_one);  print_r($array_url_two);
 
@@ -231,9 +234,9 @@ sleep(1);
 echo pkcs7_encrypt($fn_zip, $fn_p7m);
 echo zip_file($fn_p7m, $mhdata . $fn_out);
 
-echo "压缩包地址 " . $url_out;
+echo "压缩包地址 " . $url_out ."<br>\r\n";
 
-if($up2qiniu) upload2qiniu(getcwd() .'/'. $mhdata . $fn_out);
+if($up2qiniu) upload2qiniu($mhdata . $fn_out, $fn_out);
 
 echo "</pre><br>\r\n";
 

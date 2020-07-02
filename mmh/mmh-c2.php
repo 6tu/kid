@@ -1,6 +1,6 @@
 <?php
 /**
- * Get-MMH-Daily -- Minghui.org Daily 的客户端.
+ * Minghui.org Daily 的客户端.
  * 
  * PHP Version 5.5+
  * php extension library : zip,curl,openssl
@@ -36,13 +36,11 @@ if(!is_dir($cwd.'/'.$mhdata)) mkdir($cwd.'/'.$mhdata, 0777, true);
 
 # 自定义 $host, 可为数组, 提交选择
 $host = 'http://jianji.me/mmh/' . $mhdata;
-
-
-
+$host = 'http://qncdn.popcn.net/';
 
 ob_end_clean();
 
-echo "\r\n正在下载 <br><br>\r\n";
+echo "\r\n正在下载 <br><pre>\r\n";
 flush();
 # 由GET变量传递的文件名和URL
 if(isset($_GET['mhdaily'])){
@@ -73,10 +71,11 @@ $time = time();
 if(file_exists($mhdata . $fn_src)){
     $fn_src_time = filemtime($mhdata . $fn_src);
     $time_diff = round(($time - $fn_src_time)/60, 1);
-    if(($time_diff) < 31) die("<br><b>半小时前更新 </b><br>\r\n");
+    if(($time_diff) < 1) die("<br><b>半小时前更新 </b><br>\r\n");
 }
 
 $html = get_html($url_src);
+
 file_put_contents($mhdata . $fn_src, $html);
 echo "\r\n</pre><br>下载完毕 <br><br>\r\n";
 flush();
@@ -87,7 +86,82 @@ echo "\r\n<br><a href=/mmh><b> $date </b></a>";
 unlink($mhdata . $fn_p7m);
 unlink($mhdata . $fn_src);
 
+
+
 /** =========函数区========= */
+
+function stream_notification_callback($notification_code, $severity, $message, $message_code, $bytes_transferred, $bytes_max){
+    static $filesize = null;
+    switch($notification_code){
+    case STREAM_NOTIFY_FILE_SIZE_IS:
+        $filesize = $bytes_max;
+        break;
+    case STREAM_NOTIFY_CONNECT:
+        # 发生301等则出现两次
+        // echo "Connected ...<br><pre>\r\n";
+        break;
+    case STREAM_NOTIFY_PROGRESS:
+        if($bytes_transferred > 0 && $filesize >= 8192){
+            $bytes_transferred += 8192;
+            if(!isset($filesize)){
+                printf("\r\nUnknown filesize.. %2d kb done..", $bytes_transferred/1024/1024);
+            }else{
+                $length_f = number_format(($bytes_transferred/$filesize) * 100, 2);
+                $length = (int)$length_f;
+                $rem = substr($length_f, -2);
+                if($length < 6){
+                    echo '.';
+                    break;
+                }
+                if($rem > 94 and is_int($length/10)){
+                    //printf("\r\n<br>[%-90s] %d%% (%2d/%2d kb)", str_repeat("=", $length) . ">", $length, ($bytes_transferred/1024), $filesize/1024);
+                    printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
+                }
+                if($length_f > 99.98 and $length == 100){
+                    printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
+                }
+            }
+        }
+        break;
+    case STREAM_NOTIFY_COMPLETED:
+        echo "</pre><br>\r\n";
+        break;
+    }
+}
+
+function get_html($url){
+    $path_parts = pathinfo($url);
+    $refer = $path_parts['dirname'] . '/'; //  . $_SERVER['PHP_SELF']
+    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36';
+    $accept = 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9';
+
+        $option = array(
+            'http' => array(
+                //"method" => "GET",
+                //"timeout" => (float)0.5,
+                "header" =>
+                    "Referer: $refer\r\n" .
+                    "User-Agent: $ua\r\n" .
+                    "Accept: $accept\r\n" .
+                    "Accept-Language: zh-cn,zh;q=0.9,q=0.8,en-us;q=0.5,en;q=0.3\r\n" 
+                    // "Accept-Encoding: gzip, deflate, br\r\n" .
+                    // "Connection: keep-alive\r\n"
+                ), 
+            'ssl' => array(
+                "verify_host" => false,
+                "verify_peer" => false,
+                "verify_peer_name" => false,
+                ),
+            );
+    $context = stream_context_create($option);
+    stream_context_set_params($context, array("notification" => "stream_notification_callback"));
+
+    $html = file_get_contents($url, false, $context);
+    if($html === false) die($http_response_header[0]);
+    else{
+        return $html;
+    }
+}
 
 function form_html(){
     $time = date("Y-n-j", time());
@@ -99,34 +173,6 @@ function form_html(){
     $html .= '  <input type="submit" value="Send" />'."\r\n";
     $html .= "</form>\r\n</center></body>";
     echo $html;
-}
-
-function get_html($url){
-    $path_parts = pathinfo($url);
-    $refer = $path_parts['dirname'] . '/'; //  . $_SERVER['PHP_SELF']
-    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36';
-    $accept = 'text/html,application/xhtml+xml,application/json,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9';
-
-    $option = array(
-                'http' => array
-                        ('header' => 
-                        "Referer: $refer\r\n" .
-                        "User-Agent: $ua\r\n" .
-                        "Accept: $accept\r\n" .
-                        "Accept-Language: zh-cn,zh;q=0.9,q=0.8,en-us;q=0.5,en;q=0.3\r\n" .
-                       //  "Accept-Encoding: gzip, deflate, br\r\n" .
-                        "Connection: keep-alive\r\n"
-                        ), 
-                'ssl' => array('verify_peer' => false, 'verify_peer_name' => false,),
-                    );
-    $context = stream_context_create($option);
-    stream_context_set_params($context, array("notification" => "stream_notification_callback"));
-
-    $html = @file_get_contents($url, false, $context);
-    if($html === false) die('Failed ' . $http_response_header[0]);
-    else{
-        return $html;
-    }
 }
 
 function unzip_file($file, $destination){
@@ -229,43 +275,4 @@ No00f8AsulitJezWuObMZniFI2/OnlgcfJ73fexZqM51ucTaY+p5Eu0X0/PpTIlk
     if(openssl_pkcs7_decrypt($infile, $outfile, $cert, array($key, $pw))){
         return "解密成功 <br>\r\n";
     }else die("文件解密失败! <br>\r\n");
-}
-
-function stream_notification_callback($notification_code, $severity, $message, $message_code, $bytes_transferred, $bytes_max){
-    static $filesize = null;
-    switch($notification_code){
-    case STREAM_NOTIFY_FILE_SIZE_IS:
-        $filesize = $bytes_max;
-        break;
-    case STREAM_NOTIFY_CONNECT:
-        echo "Connected ...<br><pre>\r\n";
-        break;
-    case STREAM_NOTIFY_PROGRESS:
-        if($bytes_transferred > 0 && $filesize >= 8192){
-            $bytes_transferred += 8192;
-            if(!isset($filesize)){
-                printf("\r\nUnknown filesize.. %2d kb done..", $bytes_transferred/1024/1024);
-            }else{
-                $length_f = number_format(($bytes_transferred/$filesize) * 100, 2);
-                $length = (int)$length_f;
-                $rem = substr($length_f, -2);
-                if($length < 9){
-                    echo '.';
-                    break;
-                }
-                if($length > 9 and $length < 10) break;
-                if($rem > 94 and is_int($length/10)){
-                    //printf("\r\n<br>[%-90s] %d%% (%2d/%2d kb)", str_repeat("=", $length) . ">", $length, ($bytes_transferred/1024), $filesize/1024);
-                    printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
-                }
-                if($length_f > 99.98 and $length == 100){
-                    printf("\r\n[%-100s] %d%% ", str_repeat("=", $length) . ">", $length);
-                }
-            }
-        }
-        break;
-    case STREAM_NOTIFY_COMPLETED:
-        echo "</pre><br>\r\n";
-        break;
-    }
 }
