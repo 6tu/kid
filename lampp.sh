@@ -2,7 +2,7 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-webroot=/var/www
+webroot=/home/htdocs
 time=`date +%Y%m%d%H%M%S`
 freemem=`free -m|awk 'NR==2 {print $NF}'`
 sysbit=`getconf LONG_BIT`
@@ -94,10 +94,10 @@ fi
 sed -i 's/if egrep "9 "/if egrep "Red "/g' /opt/lampp/lampp
 
 # 修改配置 WEB目录
-sed -i "s/\/opt\/lampp\/htdocs/\/var\/www/g" /opt/lampp/etc/httpd.conf
-sed -i "s/\/opt\/lampp\/cgi-bin/\/var\/cgi-bin/g" /opt/lampp/etc/httpd.conf
-sed -i "s/\/opt\/lampp\/htdocs/\/var\/www/g" /opt/lampp/etc/extra/httpd-ssl.conf
-sed -i "s/\/opt\/lampp\/cgi-bin/\/var\/cgi-bin/g" /opt/lampp/etc/extra/httpd-ssl.conf
+sed -i "s/\/opt\/lampp\/htdocs/\/home\/htdocs/g" /opt/lampp/etc/httpd.conf
+sed -i "s/\/opt\/lampp\/cgi-bin/\/home\/cgi-bin/g" /opt/lampp/etc/httpd.conf
+sed -i "s/\/opt\/lampp\/htdocs/\/home\/htdocs/g" /opt/lampp/etc/extra/httpd-ssl.conf
+sed -i "s/\/opt\/lampp\/cgi-bin/\/home\/cgi-bin/g" /opt/lampp/etc/extra/httpd-ssl.conf
 sed -i "s/Require local/# Require local \n    Require all granted/g" /opt/lampp/etc/extra/httpd-xampp.conf
 sed -i "s/\['auth_type'] = 'config';/\['auth_type'] = 'config';\n\n\$cfg['Servers'][\$i]['auth_type'] = 'cookie';\n#/g" /opt/lampp/phpmyadmin/config.inc.php
 
@@ -119,15 +119,6 @@ echo ${mysqlpw} > /opt/lampp/mysqlpw
 # 增加 FTP 分组
 groupadd ftp
 useradd -g ftp -d /dev/null -s /usr/sbin/nologin ftp
-test -d /var/pub || mkdir -p /var/pub
-ftppub="/var/pub"
-chown ftp:ftp /var/pub
-chmod 0777 /var/pub
-useradd ftp -g ftp -m -d ${ftppub} -s /sbin/nologin
-
-
-
-
 
 # 建立 WEB 目录及相关文件
 test -d ${webroot}/tz || mkdir -p ${webroot}/tz
@@ -143,14 +134,11 @@ unzip -o -q -d ./ master.zip
 mv KodExplorer-master kod
 rm -rf master.zip
 
-/bin/cp -rf /opt/lampp/cgi-bin /var
-chmod -R 0755 /var/cgi-bin
-chown -R daemon:daemon /var/cgi-bin
-chown -R daemon:daemon ${webroot}
-chmod 0777 ${webroot}
-chmod 0644 -R ${webroot}
-find ${webroot} -type d -exec chmod 0755 {} \;
-find ${webroot}/* -exec touch {} \; 
+/bin/cp -rf /opt/lampp/cgi-bin /home
+
+chown -R daemon:daemon /home/* && chmod -R 644 /home/*
+find /home/* -type d -exec chmod 755 {} \;
+find /home/* -exec touch {} \; 
 
 
 
