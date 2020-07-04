@@ -6,8 +6,15 @@
  * 
  * 读取文件列举的条目数 $limit = 100;
  * 
- * 七牛云的对象存储 PHP SDK https://github.com/qiniu/php-sdk/releases
- * 
+ * 七牛云的对象存储 PHP SDK
+ *
+ * 官方SDK  https://developer.qiniu.com/sdk
+ *          https://github.com/qiniu/php-sdk/releases
+ *
+ * 社区SDK(精简) https://developer.qiniu.com/sdk#community-sdk
+ *               https://github.com/zither/simple-qiniu-sdk
+ *               https://github.com/guoking/qiniu-php-sdk
+ *
  * 官方档案中使用 test-env.sh 给系统中设置了 QINIU_ACCESS_KEY 等变量,
  * 然后使用getenv() 函数调用了这些变量, 对WINDOWS并不适用
  * 
